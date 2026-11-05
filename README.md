@@ -119,6 +119,13 @@ docker compose -f compose_local.yml up -d
 
 Full request examples: [`backend/KiComLibBackend.http`](backend/KiComLibBackend.http).
 
+## Planned part review workflow
+
+The [KiComLib review implementation plan](docs/kicomlib-review-implementation-plan.md)
+defines the proposed part revision fields, retained review definitions, approval
+workflow, and API for a later KiBot release checker. The plan is documentation;
+these review controls and release checks are not implemented yet.
+
 ## Git projects
 
 KiComLib mirrors KiCad projects from Git read-only and compares them with the catalog. GitLab.com, a self-hosted GitLab, and GitHub.com are supported. Any other Git server is polled only. Admins add hosts, credentials, and repositories under **Git Integration**. Projects are chosen from discovered `.kicad_pro` files; nothing is created automatically.
