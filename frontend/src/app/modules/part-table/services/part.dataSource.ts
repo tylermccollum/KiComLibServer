@@ -75,7 +75,8 @@ export class PartDataSource extends PagedDataSource<Part> {
       const matchesStatus = this.filter.status === 'all'
         || part.lifecycleStatus === this.filter.status;
 
-      return matchesSearch && matchesLibrary && matchesManufacturer && matchesStatus;
+      const matchesReview = !this.filter.reviewState || this.filter.reviewState === 'all' || part.reviewState === this.filter.reviewState;
+      return matchesSearch && matchesLibrary && matchesManufacturer && matchesStatus && matchesReview;
     });
   }
 }

@@ -201,3 +201,5 @@ The `./keys` volume is the live Data Protection key ring. **Backups** in the adm
 ## Version
 
 See `version.txt`.
+
+Review workflow: [API and definition contract](docs/review-api.md) · [upgrade and rollback](deployment/REVIEW-UPGRADE.md).

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, forkJoin, of, map, catchError } from 'rxjs';
 
 import { appEnvironment } from '../../../app-environment';
 import { Part } from '../types/part';
@@ -21,7 +21,13 @@ export class PartService {
       .set('_sort', sort.active)
       .set('_order', sort.direction);
 
-    return this.http.get<Part[]>(`${this.apiUrl}/part`, { params});
+    return forkJoin({
+      parts: this.http.get<Part[]>(`${this.apiUrl}/part`, { params }),
+      reviews: this.http.get<{ partUuid: string; state: string }[]>(`${this.apiUrl}/reviews/current`).pipe(catchError(() => of([])))
+    }).pipe(map(({ parts, reviews }) => {
+      const states = new Map(reviews.map(r => [r.partUuid, r.state]));
+      return parts.map(part => ({ ...part, reviewState: states.get(part.uuid ?? '') ?? 'unknown' }));
+    }));
   }
 
   getPart(id: number): Observable<Part> {

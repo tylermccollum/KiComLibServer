@@ -39,7 +39,7 @@ import { isRowControlEvent } from '../../../../shared/row-click';
     standalone: false
 })
 export class PartTableComponent implements OnInit, AfterViewInit, OnDestroy {
-  displayedColumns: string[] = ['id', 'name', 'value', 'comment', 'lifecycleStatus', 'actions'];
+  displayedColumns: string[] = ['id', 'name', 'value', 'comment', 'lifecycleStatus', 'reviewState', 'actions'];
   readonly lifecycleLabel = lifecycleLabel;
   readonly lifecycleBadgeClass = lifecycleBadgeClass;
   dataSource = new PartDataSource(this.partService, this.partNumberService, this.orderNumberService);
@@ -122,7 +122,7 @@ export class PartTableComponent implements OnInit, AfterViewInit, OnDestroy {
     return !!this.filter.search
       || this.filter.libraryId !== 'all'
       || this.filter.manufacturerId !== 'all'
-      || this.filter.status !== 'all';
+      || this.filter.status !== 'all' || this.filter.reviewState !== 'all';
   }
 
   openHistory(row: Part, event?: Event): void {
@@ -162,6 +162,10 @@ export class PartTableComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onStatusChange(status: PartStatusFilter) {
     this.applyFilter({ ...this.filter, status });
+  }
+
+  onReviewChange(reviewState: string) {
+    this.applyFilter({ ...this.filter, reviewState });
   }
 
   clearFilters() {

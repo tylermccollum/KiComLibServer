@@ -23,12 +23,11 @@ namespace KiComLibBackend.Data
     }
 
     /// <summary>
-    /// Creates the database if it is missing and applies the version-1 schema to an empty database.
-    /// An existing database is left unchanged. This release has no upgrade path.
+    /// Creates missing databases and applies ordered, transactional schema upgrades.
     /// </summary>
     public class DatabaseInitializer
     {
-        public const int SchemaVersion = 1;
+        public const int SchemaVersion = 2;
 
         private static readonly string[] ScriptFiles =
         {
@@ -71,6 +70,16 @@ namespace KiComLibBackend.Data
             _logger = logger;
         }
 
+        public async Task ValidateAsync(CancellationToken cancellationToken = default)
+        {
+            await using NpgsqlConnection connection = new(_options.ConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            int version = await GetSchemaVersionAsync(connection, cancellationToken);
+            if (version != SchemaVersion || (await GetMissingTablesAsync(connection, cancellationToken)).Count > 0
+                || !await TableExistsAsync(connection, "review_definition", cancellationToken))
+                throw new InvalidOperationException($"Database schema {version} is incompatible; expected {SchemaVersion}. Enable DB_AUTO_INIT to apply supported upgrades.");
+        }
+
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
             TimeSpan delay = TimeSpan.FromSeconds(1);
@@ -82,6 +91,7 @@ namespace KiComLibBackend.Data
                 try
                 {
                     await InitializeCoreAsync(cancellationToken);
+                    await ValidateAsync(cancellationToken);
                     return;
                 }
                 catch (Exception exception) when (!cancellationToken.IsCancellationRequested && IsDatabaseUnavailable(exception))
@@ -107,47 +117,35 @@ namespace KiComLibBackend.Data
         {
             await using NpgsqlConnection connection = await OpenDatabaseAsync(cancellationToken);
 
-            List<string> missingTables = await GetMissingTablesAsync(connection, cancellationToken);
-
-            if (missingTables.Count == RequiredTables.Length)
+            // A session lock also protects first installation, before any tables exist.
+            await using NpgsqlCommand migrationLock = new("SELECT pg_advisory_lock(1936418162, 0)", connection);
+            await migrationLock.ExecuteNonQueryAsync(cancellationToken);
+            try
             {
-                await InitializeFreshAsync(connection, cancellationToken);
-                return;
+                List<string> missingTables = await GetMissingTablesAsync(connection, cancellationToken);
+                if (missingTables.Count > 0 && missingTables.Count != RequiredTables.Length)
+                    throw new InvalidOperationException("Partially initialized database; missing tables: " + string.Join(", ", missingTables));
+                int currentVersion = await GetSchemaVersionAsync(connection, cancellationToken);
+                if (currentVersion > SchemaVersion || (missingTables.Count == 0 && currentVersion < 1))
+                    throw new InvalidOperationException($"Unsupported database schema {currentVersion}; this server supports 1 through {SchemaVersion}.");
+                await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(cancellationToken);
+                if (missingTables.Count == RequiredTables.Length)
+                {
+                    if (currentVersion != 0) throw new InvalidOperationException("Schema history exists but catalog tables are missing.");
+                    foreach (string file in ScriptFiles)
+                        await ExecuteScriptAsync(connection, transaction, Path.Combine(_options.ScriptDirectory, file), ResolveOwner(), cancellationToken);
+                    currentVersion = 1;
+                }
+                if (currentVersion == 1)
+                    await ExecuteScriptAsync(connection, transaction, Path.Combine(_options.ScriptDirectory, "08_Reviews.sql"), ResolveOwner(), cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                _logger.LogInformation("Database '{Database}' is ready at schema version {Version}.", connection.Database, SchemaVersion);
             }
-
-            if (missingTables.Count > 0)
+            finally
             {
-                _logger.LogError(
-                    "Database '{Database}' is only partially initialized, the tables {Tables} are missing. Initialization was skipped.",
-                    connection.Database,
-                    string.Join(", ", missingTables));
-                return;
+                await using NpgsqlCommand unlock = new("SELECT pg_advisory_unlock(1936418162, 0)", connection);
+                await unlock.ExecuteNonQueryAsync(CancellationToken.None);
             }
-
-            int currentVersion = await GetSchemaVersionAsync(connection, cancellationToken);
-            _logger.LogInformation(
-                "Database '{Database}' is already initialized (schema version {Version}).",
-                connection.Database,
-                currentVersion);
-        }
-
-        private async Task InitializeFreshAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
-        {
-            string owner = ResolveOwner();
-
-            _logger.LogInformation("Database '{Database}' is not initialized, running the initialization scripts.", connection.Database);
-
-            await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(cancellationToken);
-
-            foreach (string scriptFile in ScriptFiles)
-            {
-                await ExecuteScriptAsync(connection, transaction, Path.Combine(_options.ScriptDirectory, scriptFile), owner, cancellationToken);
-            }
-
-            await transaction.CommitAsync(cancellationToken);
-
-            int version = await GetSchemaVersionAsync(connection, cancellationToken);
-            _logger.LogInformation("Database '{Database}' was initialized with schema version {Version}.", connection.Database, version);
         }
 
         private string ResolveOwner()

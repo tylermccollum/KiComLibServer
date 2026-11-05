@@ -1,0 +1,22 @@
+{
+  "body": {
+    "schemaVersion": 1,
+    "part": {
+      "uuid": "00000000-0000-4000-8000-000000000001",
+      "name": "10k Ω",
+      "value": "10k",
+      "comment": null,
+      "properties": null
+    },
+    "primarySource": null,
+    "alternativeSource": null,
+    "sources": [],
+    "alternatives": [],
+    "symbol": null,
+    "footprint": null,
+    "datasheets": [],
+    "datasheetUrl": null
+  },
+  "canonical": "{\"alternativeSource\":null,\"alternatives\":[],\"datasheetUrl\":null,\"datasheets\":[],\"footprint\":null,\"part\":{\"comment\":null,\"name\":\"10k Ω\",\"properties\":null,\"uuid\":\"00000000-0000-4000-8000-000000000001\",\"value\":\"10k\"},\"primarySource\":null,\"schemaVersion\":1,\"sources\":[],\"symbol\":null}",
+  "definitionDigest": "sha256:5e3660e674c61f936c8ca64e48916559f103c0969b99a145f7a1a902a43b4dd7"
+}

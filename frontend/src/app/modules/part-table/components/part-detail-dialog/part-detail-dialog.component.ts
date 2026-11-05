@@ -85,7 +85,7 @@ export class PartDetailDialogComponent {
   readonly alternativeColumns = ['name', 'value', 'comment'];
 
   signedIn = false;
-  private catalogChanged = false;
+  catalogChanged = false;
   usages: PartUsage[] = [];
   usageError = '';
   usageLoading = false;

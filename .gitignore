@@ -1,0 +1,3 @@
+# Machine-specific deployment contains resolved local credentials.
+deployment/compose.local.json
+deployment/migration-backups/

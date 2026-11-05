@@ -27,14 +27,14 @@ public class ProjectGitTests
     private bool Database => _factory.DatabaseAvailable;
 
     [Fact]
-    public async Task FreshDatabase_HasSchemaVersion1()
+    public async Task FreshDatabase_HasCurrentSchemaVersion()
     {
         if (!Database) return;
 
         await using NpgsqlConnection connection = await OpenAsync();
         int version = await ScalarIntAsync(connection, "SELECT COALESCE(MAX(version), 0) FROM public.schema_version");
         Assert.Equal(DatabaseInitializer.SchemaVersion, version);
-        Assert.Equal(1, await ScalarIntAsync(connection, "SELECT COUNT(*) FROM public.schema_version"));
+        Assert.Equal(DatabaseInitializer.SchemaVersion, await ScalarIntAsync(connection, "SELECT COUNT(*) FROM public.schema_version"));
         int hosts = await ScalarIntAsync(connection, "SELECT COUNT(*) FROM public.git_host WHERE is_system");
         Assert.Equal(2, hosts);
         Assert.True(await TableExistsAsync(connection, "project_job"));

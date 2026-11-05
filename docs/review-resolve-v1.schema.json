@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KiComLib review resolution v1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "serverInstanceUuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "responseUuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "observedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "policyId": {
+      "type": "string"
+    },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "properties": {
+          "partUuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "definitionDigest": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "unreviewed",
+              "in_review",
+              "approved",
+              "rejected",
+              "revoked"
+            ]
+          },
+          "stateVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "isCurrent": {
+            "type": "boolean"
+          },
+          "approvalValid": {
+            "type": "boolean"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "definitionUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "partUuid",
+          "definitionDigest",
+          "state",
+          "stateVersion",
+          "isCurrent",
+          "approvalValid",
+          "reasons",
+          "definitionUrl"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "serverInstanceUuid",
+    "responseUuid",
+    "observedAt",
+    "policyId",
+    "results"
+  ],
+  "additionalProperties": false
+}
