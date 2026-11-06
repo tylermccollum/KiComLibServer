@@ -1,6 +1,10 @@
-# Review schema upgrade (v1 → v2)
+# Review and asset verification schema upgrade (v1/v2 → v3)
 
-Build from `feat/kicomlib-review` using a fixed commit:
+Schema 2 adds retained part review; schema 3 adds independent symbol and
+footprint verification. See the [verification API](../docs/asset-verification-api.md)
+and [agent workflow](../AGENTS.md).
+
+Build from the fork's `main` using a fixed tested commit:
 
 ```sh
 docker build --build-arg BUILD_REVISION="$(git rev-parse HEAD)" -t kicomlib-review:YOUR_COMMIT .
@@ -25,12 +29,16 @@ or put resolved production Compose files into Git.
    `deployment/compose.local.json` may contain resolved secrets: mode 0600 and ignored
    by Git. Use explicit `-p PROJECT -f deployment/compose.local.json` on all commands.
 5. Update only the application image to the fixed tested tag and start it. Startup
-   transactionally applies migration 08. Fresh databases apply baseline v1 then v2;
-   existing rows are not rewritten and begin unreviewed on demand. Migration errors,
+   transactionally applies migration 08 when needed, then migration 09. Fresh
+   databases apply baseline v1, then v2 and v3; v2 databases apply only migration 09.
+   Existing catalog rows and part review evidence are preserved. Assets have no
+   verification decisions initially; a v1 catalog begins part review unreviewed. Migration errors,
    partial schemas, and newer unsupported schemas abort startup. With `DB_AUTO_INIT=false`,
    startup validates the exact schema instead of migrating.
-6. Check running image/build revision, schema 2, original inventory/accounts, logs,
-   HTTP library output, resolver permission behavior, and frontend assets. Keep the
+6. Check running image/build revision, schema 3, original inventory/accounts, logs,
+   HTTP library output, resolver permission behavior, and frontend assets. Check
+   `assetVerificationApiVersion: 1` in `/api/info`, pending symbol/footprint discovery,
+   and the catalog verification badges. Keep the
    pre-migration configuration and dump for rollback. No catalog part is approved
    automatically and no KiBot release enforcement is installed by this upgrade.
 
