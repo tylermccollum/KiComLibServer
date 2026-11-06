@@ -12,6 +12,8 @@ export interface FootprintModel {
 }
 
 export interface Footprint {
+  verified?: boolean;
+  verificationState?: 'unverified' | 'verified' | 'stale' | 'needs_attention' | 'blocked';
   id: number;
   uuid: string;
   libraryFileId: number;

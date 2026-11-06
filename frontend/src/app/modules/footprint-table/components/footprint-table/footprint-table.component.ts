@@ -28,6 +28,7 @@ export class FootprintTableComponent implements OnInit, AfterViewInit, OnDestroy
   displayedColumns: string[] = [
     'id',
     'name',
+    'verification',
     'description',
     'tags',
     'libraryFileId',

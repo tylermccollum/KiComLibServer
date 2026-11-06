@@ -68,6 +68,7 @@ builder.Services.AddScoped<ReviewDatabase>();
 builder.Services.AddScoped<ReviewDefinitionBuilder>();
 builder.Services.AddScoped<IReviewValidator, ReviewValidator>();
 builder.Services.AddScoped<ReviewService>();
+builder.Services.AddScoped<AssetVerificationService>();
 builder.Services.AddScoped<CatalogMatcher>();
 builder.Services.AddScoped<BomService>();
 builder.Services.AddScoped<ProjectAnalysisApplier>();

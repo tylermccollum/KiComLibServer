@@ -107,6 +107,7 @@ namespace KiComLibBackend.Controllers
                 apiVersion = ProductVersion.ApiVersion,
                 projectsApiVersion = 1,
                 reviewsApiVersion = 1,
+                assetVerificationApiVersion = 1,
                 reviewDefinitionSchemaVersion = 1,
                 reviewPolicyId = "kicomlib-review/1",
                 buildRevision = Environment.GetEnvironmentVariable("BUILD_REVISION"),

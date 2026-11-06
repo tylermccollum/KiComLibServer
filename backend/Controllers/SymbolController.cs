@@ -1,4 +1,5 @@
 using System.Text;
+using KiComLibBackend.Services.Reviews;
 using KiComLibBackend.Data;
 using KiComLibBackend.Models;
 using KiComLibBackend.Services;
@@ -14,12 +15,14 @@ namespace KiComLibBackend.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IBlobStore _blobStore;
         private readonly DiffService _diffService;
+        private readonly AssetVerificationService _verification;
 
-        public SymbolController(ApplicationDbContext context, IBlobStore blobStore, DiffService diffService)
+        public SymbolController(ApplicationDbContext context, IBlobStore blobStore, DiffService diffService, AssetVerificationService verification)
         {
             _context = context;
             _blobStore = blobStore;
             _diffService = diffService;
+            _verification = verification;
         }
 
         [HttpGet]
@@ -62,49 +65,57 @@ namespace KiComLibBackend.Controllers
                 _ => query
             };
 
-            return await query.ToListAsync();
+            return await _verification.WithStates("symbol", () => query.ToListAsync(), item => item.Uuid,
+                (item, state) => { item.Verified = state == "verified"; item.VerificationState = state; }, HttpContext.RequestAborted);
         }
 
         [HttpGet("{id:int}")]
         public async Task<ActionResult<SymbolDetailDto>> GetSymbol(int id, CancellationToken cancellationToken)
         {
-            SymbolHeadView? head = await _context.SymbolHeadViews.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
-            if (head == null)
+            return await _verification.Snapshot<ActionResult<SymbolDetailDto>>(async () =>
             {
-                return NotFound();
-            }
-
-            string? data = null;
-            if (!string.IsNullOrWhiteSpace(head.Hash))
-            {
-                Blob? blob = await _blobStore.GetAsync(head.Hash, cancellationToken);
-                if (blob?.Data != null)
+                SymbolHeadView? head = await _context.SymbolHeadViews.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+                if (head == null)
                 {
-                    data = Encoding.UTF8.GetString(blob.Data);
+                    return NotFound();
                 }
-            }
 
-            return new SymbolDetailDto
-            {
-                Id = head.Id,
-                Uuid = head.Uuid,
-                LibraryFileId = head.LibraryFileId,
-                Name = head.Name,
-                Reference = head.Reference,
-                InBom = head.InBom,
-                OnBoard = head.OnBoard,
-                PinNumbersHidden = head.PinNumbersHidden,
-                PinNamesHidden = head.PinNamesHidden,
-                PinNamesOffset = head.PinNamesOffset,
-                Description = head.Description,
-                Data = data,
-                Hash = head.Hash?.Trim(),
-                FileHash = (head.FileHash ?? head.Hash)?.Trim(),
-                RevisionNo = head.RevisionNo,
-                HeadRevisionId = head.HeadRevisionId,
-                UpdatedAt = head.UpdatedAt,
-                CreatedAt = head.CreatedAt
-            };
+                string? data = null;
+                if (!string.IsNullOrWhiteSpace(head.Hash))
+                {
+                    Blob? blob = await _blobStore.GetAsync(head.Hash, cancellationToken);
+                    if (blob?.Data != null)
+                    {
+                        data = Encoding.UTF8.GetString(blob.Data);
+                    }
+                }
+
+                string verificationState = head.Uuid is Guid uuid
+                    ? (await _verification.Current("symbol", uuid, cancellationToken))["state"]!.GetValue<string>() : "blocked";
+                return new SymbolDetailDto
+                {
+                    Id = head.Id,
+                    Verified = verificationState == "verified",
+                    VerificationState = verificationState,
+                    Uuid = head.Uuid,
+                    LibraryFileId = head.LibraryFileId,
+                    Name = head.Name,
+                    Reference = head.Reference,
+                    InBom = head.InBom,
+                    OnBoard = head.OnBoard,
+                    PinNumbersHidden = head.PinNumbersHidden,
+                    PinNamesHidden = head.PinNamesHidden,
+                    PinNamesOffset = head.PinNamesOffset,
+                    Description = head.Description,
+                    Data = data,
+                    Hash = head.Hash?.Trim(),
+                    FileHash = (head.FileHash ?? head.Hash)?.Trim(),
+                    RevisionNo = head.RevisionNo,
+                    HeadRevisionId = head.HeadRevisionId,
+                    UpdatedAt = head.UpdatedAt,
+                    CreatedAt = head.CreatedAt
+                };
+            }, cancellationToken);
         }
 
         [HttpGet("preview/{id:int}")]

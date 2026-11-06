@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
 
@@ -6,9 +7,17 @@ namespace KiComLibBackend.Services.Reviews;
 public sealed record ReviewFinding(string RuleId, string Severity, string EntityPath, string Message);
 public sealed record ReviewCapture(Guid PartUuid, string Digest, JsonObject Body, JsonArray Provenance, HashSet<string> Blobs, List<ReviewFinding> Findings);
 
+public sealed record ReviewAssetCapture(string Kind, Guid AssetUuid, string Name, string Digest, JsonObject Body, JsonArray Provenance, HashSet<string> Blobs, List<ReviewFinding> Findings);
+
 public sealed class ReviewDefinitionBuilder(ReviewDatabase db)
 {
     public Task<ReviewCapture> Capture(Guid partUuid, CancellationToken ct) => new CaptureSession(db, ct).Build(partUuid);
+
+    public Task<ReviewAssetCapture> CaptureAsset(string kind, Guid uuid, CancellationToken ct)
+    {
+        AssetVerificationService.Kind(kind);
+        return new CaptureSession(db, ct).BuildAsset(kind, uuid);
+    }
 
     private sealed class CaptureSession(ReviewDatabase db, CancellationToken ct)
     {
@@ -72,6 +81,23 @@ public sealed class ReviewDefinitionBuilder(ReviewDatabase db)
             try { if (!findings.Any(f => f.Severity == "error")) digest = ReviewJson.Digest(ReviewJson.Canonical(body)); }
             catch (FormatException ex) { Error("definition", ex.Message); }
             return new(uuid, digest, body, provenance, blobs, findings);
+        }
+
+        public async Task<ReviewAssetCapture> BuildAsset(string kind, Guid uuid)
+        {
+            var row = await db.Row($"SELECT to_jsonb(a)::text FROM public.{kind} a WHERE uuid=@uuid AND deleted_at IS NULL", ct, ("uuid", uuid))
+                ?? throw new ReviewException(404, "Asset not found");
+            JsonObject body = new() { ["schemaVersion"] = 1, ["kind"] = kind, ["asset"] = await Asset(kind, Id(row, "id"), kind, []) };
+            foreach (string hash in blobs)
+            {
+                byte[]? data = await db.Blob(hash, ct);
+                if (data == null || Convert.ToHexStringLower(SHA256.HashData(data)) != hash)
+                    findings.Add(new("blob.integrity", "error", "blobs/" + hash, "Missing source or SHA-256 mismatch"));
+            }
+            string digest = "";
+            try { if (!findings.Any(f => f.Severity == "error")) digest = ReviewJson.Digest(ReviewJson.Canonical(body)); }
+            catch (FormatException ex) { Error("definition", ex.Message); }
+            return new(kind, uuid, Text(row, "name"), digest, body, provenance, blobs, findings);
         }
 
         private async Task<JsonArray> Sources(int partId, string path)

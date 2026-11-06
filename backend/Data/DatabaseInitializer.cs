@@ -27,7 +27,7 @@ namespace KiComLibBackend.Data
     /// </summary>
     public class DatabaseInitializer
     {
-        public const int SchemaVersion = 2;
+        public const int SchemaVersion = 3;
 
         private static readonly string[] ScriptFiles =
         {
@@ -76,7 +76,11 @@ namespace KiComLibBackend.Data
             await connection.OpenAsync(cancellationToken);
             int version = await GetSchemaVersionAsync(connection, cancellationToken);
             if (version != SchemaVersion || (await GetMissingTablesAsync(connection, cancellationToken)).Count > 0
-                || !await TableExistsAsync(connection, "review_definition", cancellationToken))
+                || !await TableExistsAsync(connection, "review_definition", cancellationToken)
+                || !await TableExistsAsync(connection, "asset_verification_definition", cancellationToken)
+                || !await TableExistsAsync(connection, "asset_verification_blob", cancellationToken)
+                || !await TableExistsAsync(connection, "asset_verification_state", cancellationToken)
+                || !await TableExistsAsync(connection, "asset_verification_action", cancellationToken))
                 throw new InvalidOperationException($"Database schema {version} is incompatible; expected {SchemaVersion}. Enable DB_AUTO_INIT to apply supported upgrades.");
         }
 
@@ -137,7 +141,12 @@ namespace KiComLibBackend.Data
                     currentVersion = 1;
                 }
                 if (currentVersion == 1)
+                {
                     await ExecuteScriptAsync(connection, transaction, Path.Combine(_options.ScriptDirectory, "08_Reviews.sql"), ResolveOwner(), cancellationToken);
+                    currentVersion = 2;
+                }
+                if (currentVersion == 2)
+                    await ExecuteScriptAsync(connection, transaction, Path.Combine(_options.ScriptDirectory, "09_AssetVerification.sql"), ResolveOwner(), cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
                 _logger.LogInformation("Database '{Database}' is ready at schema version {Version}.", connection.Database, SchemaVersion);
             }

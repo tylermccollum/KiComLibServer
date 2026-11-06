@@ -18,7 +18,7 @@ public class ReviewMigrationTests(CustomWebApplicationFactory factory)
             var initializer = new DatabaseInitializer(options, NullLogger<DatabaseInitializer>.Instance);
             await initializer.InitializeAsync();
             Assert.Equal(before, await Snapshot(connection));
-            Assert.Equal(2, await Scalar(connection, "SELECT max(version) FROM schema_version"));
+            Assert.Equal(DatabaseInitializer.SchemaVersion, await Scalar(connection, "SELECT max(version) FROM schema_version"));
             Assert.Equal(0L, await Scalar(connection, "SELECT count(*) FROM review_definition"));
             string instance = (string)(await Scalar(connection, "SELECT instance_id::text FROM review_server"))!;
             await initializer.InitializeAsync();
@@ -46,6 +46,51 @@ public class ReviewMigrationTests(CustomWebApplicationFactory factory)
                 Assert.Equal(1, await Scalar(connection, "SELECT max(version) FROM schema_version"));
                 Assert.Equal(DBNull.Value, await Scalar(connection, "SELECT to_regclass('public.review_definition')::text"));
                 Assert.Equal(1L, await Scalar(connection, "SELECT count(*) FROM app_user"));
+            }
+            finally { Directory.Delete(scripts, true); }
+        });
+    }
+
+    [Fact]
+    public async Task PopulatedV2_UpgradesOnce_WithoutChangingReviewEvidence()
+    {
+        await InDatabase(async (connection, options) =>
+        {
+            await Baseline(connection, options.ScriptDirectory);
+            await Execute(connection, await File.ReadAllTextAsync(Path.Combine(options.ScriptDirectory, "08_Reviews.sql")));
+            await Execute(connection, "INSERT INTO review_definition(digest,part_uuid,schema_version,body,provenance) VALUES('sha256:' || repeat('a',64),gen_random_uuid(),1,'{}','{}'); INSERT INTO review_state(digest,state,version,evidence_policy,evidence_valid) VALUES('sha256:' || repeat('a',64),'approved',2,'kicomlib-review/1',true)");
+            const string evidence = "SELECT jsonb_build_object('definitions',(SELECT jsonb_agg(to_jsonb(d)) FROM review_definition d),'states',(SELECT jsonb_agg(to_jsonb(s)) FROM review_state s),'server',(SELECT to_jsonb(r) FROM review_server r))::text";
+            object? before = await Scalar(connection, evidence);
+            var initializer = new DatabaseInitializer(options, NullLogger<DatabaseInitializer>.Instance);
+            await initializer.InitializeAsync();
+            await initializer.ValidateAsync();
+            Assert.Equal(DatabaseInitializer.SchemaVersion, await Scalar(connection, "SELECT max(version) FROM schema_version"));
+            Assert.Equal(before, await Scalar(connection, evidence));
+            Assert.Equal(0L, await Scalar(connection, "SELECT count(*) FROM asset_verification_action"));
+            await initializer.InitializeAsync();
+            Assert.Equal(1L, await Scalar(connection, "SELECT count(*) FROM schema_version WHERE version=3"));
+        });
+    }
+
+    [Fact]
+    public async Task FailedVerificationMigration_RollsBackToV2()
+    {
+        await InDatabase(async (connection, options) =>
+        {
+            await Baseline(connection, options.ScriptDirectory);
+            await Execute(connection, await File.ReadAllTextAsync(Path.Combine(options.ScriptDirectory, "08_Reviews.sql")));
+            string before = await Snapshot(connection);
+            string scripts = Path.Combine(Path.GetTempPath(), "verification-broken-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(scripts);
+            try
+            {
+                string migration = await File.ReadAllTextAsync(Path.Combine(options.ScriptDirectory, "09_AssetVerification.sql"));
+                await File.WriteAllTextAsync(Path.Combine(scripts, "09_AssetVerification.sql"), migration + "\nSELECT missing_migration_function();");
+                options.ScriptDirectory = scripts;
+                await Assert.ThrowsAsync<PostgresException>(() => new DatabaseInitializer(options, NullLogger<DatabaseInitializer>.Instance).InitializeAsync());
+                Assert.Equal(2, await Scalar(connection, "SELECT max(version) FROM schema_version"));
+                Assert.Equal(DBNull.Value, await Scalar(connection, "SELECT to_regclass('public.asset_verification_state')::text"));
+                Assert.Equal(before, await Snapshot(connection));
             }
             finally { Directory.Delete(scripts, true); }
         });

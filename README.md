@@ -119,12 +119,16 @@ docker compose -f compose_local.yml up -d
 
 Full request examples: [`backend/KiComLibBackend.http`](backend/KiComLibBackend.http).
 
-## Planned part review workflow
+## Part review workflow
 
-The [KiComLib review implementation plan](docs/kicomlib-review-implementation-plan.md)
-defines the proposed part revision fields, retained review definitions, approval
-workflow, and API for a later KiBot release checker. The plan is documentation;
-these review controls and release checks are not implemented yet.
+The [review API documentation](docs/review-api.md) describes the implemented
+part revision fields, retained definitions, review decisions, and exact-digest
+lookup API. Review is advisory during editing; KiBot comparison and release
+enforcement remain a separate integration.
+
+[Symbol and footprint verification](docs/asset-verification-api.md) adds exact
+asset checks and visible status badges, independent of component approval.
+[AGENTS.md](AGENTS.md) defines the initial agent inspection and review workflow.
 
 ## Git projects
 

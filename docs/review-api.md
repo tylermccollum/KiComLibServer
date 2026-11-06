@@ -126,7 +126,9 @@ excluded. Geometry metadata includes its own description/tags/attributes.
 supported schema, canonical digest, exact retained references, blob SHA-256 integrity,
 and capture-time dependency/association consistency. Missing MPN, symbol, or footprint
 is a warning in this initial policy. This is not electrical, dimensional, or datasheet
-correctness certification. Change the policy ID whenever mandatory rules change.
+correctness certification. Independent [symbol and footprint verification](asset-verification-api.md)
+records an agent/engineer check without changing this approval policy. Change the
+policy ID whenever mandatory rules change.
 Existing approvals then require explicit revalidation of retained content. Failed
 revalidation leaves the historical decision but makes approval invalid. It cannot
 undo a revocation. Slow external tools and worker execution are deferred.

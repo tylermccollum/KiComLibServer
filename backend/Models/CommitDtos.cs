@@ -126,6 +126,8 @@ namespace KiComLibBackend.Models
 
     public class SymbolDetailDto
     {
+        public bool Verified { get; set; }
+        public string VerificationState { get; set; } = "unverified";
         public int? Id { get; set; }
         public Guid? Uuid { get; set; }
         public int LibraryFileId { get; set; }
@@ -148,6 +150,8 @@ namespace KiComLibBackend.Models
 
     public class FootprintDetailDto
     {
+        public bool Verified { get; set; }
+        public string VerificationState { get; set; } = "unverified";
         public int? Id { get; set; }
         public Guid? Uuid { get; set; }
         public int LibraryFileId { get; set; }
