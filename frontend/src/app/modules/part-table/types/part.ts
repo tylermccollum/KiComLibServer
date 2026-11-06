@@ -29,6 +29,7 @@ export function lifecycleBadgeClass(status: string | null | undefined): string {
 export interface Part {
   id: number;
   uuid?: string;
+  reviewState?: string;
   name: string;
   comment: string;
   datasheetId?: number;

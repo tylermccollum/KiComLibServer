@@ -1,0 +1,518 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KiComLib review definition v1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "part": {
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "properties": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "uuid",
+        "name",
+        "value",
+        "comment",
+        "properties"
+      ],
+      "additionalProperties": false
+    },
+    "primarySource": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/source"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "alternativeSource": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/source"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "alternatives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "partUuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/source"
+            }
+          }
+        },
+        "required": [
+          "partUuid",
+          "sources"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "symbol": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/symbol"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "footprint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/footprint"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "datasheets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/asset"
+      }
+    },
+    "datasheetUrl": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "part",
+    "primarySource",
+    "alternativeSource",
+    "sources",
+    "alternatives",
+    "symbol",
+    "footprint",
+    "datasheets",
+    "datasheetUrl"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "source": {
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mpn": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "manufacturer": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "uuid": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uuid",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "uuid",
+        "mpn",
+        "manufacturer"
+      ],
+      "additionalProperties": false
+    },
+    "symbol": {
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "blobHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "library": {
+          "type": "object",
+          "properties": {
+            "uuid": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "filename": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "uuid",
+            "filename"
+          ],
+          "additionalProperties": false
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "in_bom": {
+              "type": "boolean"
+            },
+            "on_board": {
+              "type": "boolean"
+            },
+            "pin_numbers_hidden": {
+              "type": "boolean"
+            },
+            "pin_names_hidden": {
+              "type": "boolean"
+            },
+            "reference": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pin_names_offset": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "in_bom",
+            "on_board",
+            "pin_numbers_hidden",
+            "pin_names_hidden",
+            "reference",
+            "pin_names_offset",
+            "description"
+          ],
+          "additionalProperties": false
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/symbol"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "uuid",
+        "blobHash",
+        "name",
+        "library",
+        "metadata",
+        "parent"
+      ],
+      "additionalProperties": false
+    },
+    "footprint": {
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "blobHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "library": {
+          "type": "object",
+          "properties": {
+            "uuid": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "filename": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "uuid",
+            "filename"
+          ],
+          "additionalProperties": false
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "integer"
+            },
+            "board_only": {
+              "type": "boolean"
+            },
+            "exclude_from_pos_files": {
+              "type": "boolean"
+            },
+            "exclude_from_bom": {
+              "type": "boolean"
+            },
+            "height": {
+              "type": "number"
+            },
+            "layer": {
+              "type": "string"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tags": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "property": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "board_only",
+            "exclude_from_pos_files",
+            "exclude_from_bom",
+            "height",
+            "layer",
+            "description",
+            "tags",
+            "property"
+          ],
+          "additionalProperties": false
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "position": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "offset_x": {
+                "type": "number"
+              },
+              "offset_y": {
+                "type": "number"
+              },
+              "offset_z": {
+                "type": "number"
+              },
+              "rotate_x": {
+                "type": "number"
+              },
+              "rotate_y": {
+                "type": "number"
+              },
+              "rotate_z": {
+                "type": "number"
+              },
+              "scale_x": {
+                "type": "number"
+              },
+              "scale_y": {
+                "type": "number"
+              },
+              "scale_z": {
+                "type": "number"
+              },
+              "hide": {
+                "type": "boolean"
+              },
+              "opacity": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "model": {
+                "$ref": "#/$defs/asset"
+              }
+            },
+            "required": [
+              "position",
+              "offset_x",
+              "offset_y",
+              "offset_z",
+              "rotate_x",
+              "rotate_y",
+              "rotate_z",
+              "scale_x",
+              "scale_y",
+              "scale_z",
+              "hide",
+              "opacity",
+              "model"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "uuid",
+        "blobHash",
+        "name",
+        "library",
+        "metadata",
+        "models"
+      ],
+      "additionalProperties": false
+    },
+    "asset": {
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "blobHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "directory": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uuid",
+        "blobHash",
+        "directory",
+        "filename"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

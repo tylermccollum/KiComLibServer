@@ -30,6 +30,9 @@ RUN dotnet publish KiComLibBackend.csproj -c Release -o out
 # Stage 3: Create the final runtime image
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+ARG BUILD_REVISION=unknown
+ENV BUILD_REVISION=$BUILD_REVISION
+LABEL org.opencontainers.image.revision=$BUILD_REVISION
 WORKDIR /app
 # Backups call pg_dump/pg_restore in this container. Ubuntu 24.04 ships the
 # PostgreSQL 16 client, which cannot read a PostgreSQL 18 custom-format dump.

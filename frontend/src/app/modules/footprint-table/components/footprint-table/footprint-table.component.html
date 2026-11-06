@@ -77,6 +77,15 @@
           <td mat-cell *matCellDef="let row"> {{row.name}} </td>
         </ng-container>
 
+        <ng-container matColumnDef="verification">
+          <th mat-header-cell *matHeaderCellDef> Verification </th>
+          <td mat-cell *matCellDef="let row">
+            <span class="badge" [ngClass]="row.verified ? 'badge-success' : 'badge-muted'">
+              {{ row.verified ? 'Verified' : (row.verificationState === 'needs_attention' ? 'Needs attention' : ((row.verificationState || 'unverified') | titlecase)) }}
+            </span>
+          </td>
+        </ng-container>
+
         <!-- Description Column -->
         <ng-container matColumnDef="description">
           <th mat-header-cell *matHeaderCellDef mat-sort-header> Description </th>

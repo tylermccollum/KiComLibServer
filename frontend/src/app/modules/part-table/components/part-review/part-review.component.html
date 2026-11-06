@@ -1,0 +1,95 @@
+<div class="actions">
+  <button class="btn-outline" type="button" (click)="reload()" [disabled]="busy">Refresh current definition</button>
+  <label>View
+    <select class="input-dark" [ngModel]="selectedDigest" (ngModelChange)="select($event)" [disabled]="busy">
+      <option [value]="current?.definitionDigest || ''">Current definition · {{ current?.state }}</option>
+      @for (item of definitions; track item.definitionDigest) {
+        @if (item.definitionDigest !== current?.definitionDigest) {
+          <option [value]="item.definitionDigest">{{ item.createdAt | date:'short' }} · {{ item.state }} · {{ item.definitionDigest.slice(7, 19) }}</option>
+        }
+      }
+    </select>
+  </label>
+</div>
+@if (error) { <p class="error" role="alert">{{ error }}</p> }
+@if (busy) { <p class="muted" role="status">Working…</p> }
+@if (shown; as review) {
+  <p><strong>{{ isCurrent ? 'Current' : 'Historical' }} definition · {{ review.state.replace('_', ' ') }}</strong>
+    @if (review.state === 'approved' && !review.approvalValid) { <span class="error"> · Validation required</span> }
+  </p>
+  <p class="digest"><code>{{ review.definitionDigest || 'Cannot capture this definition until its dependency errors are resolved.' }}</code></p>
+  <p class="muted">Review records cover the saved part and its dependencies. Release checking also needs to compare the design in KiBot.</p>
+  @for (finding of findings; track $index) {
+    <p [class.error]="finding.severity === 'error'">{{ finding.severity }} · {{ finding.entityPath }}: {{ finding.message }}</p>
+  }
+  @if (auth.canWrite()) {
+    <label for="review-comment">Review comment / reason</label>
+    <textarea id="review-comment" class="input-dark" rows="2" maxlength="4000" [(ngModel)]="comment" [disabled]="busy"></textarea>
+    <div class="actions">
+      @if (isCurrent && review.definitionDigest && (review.state === 'unreviewed' || review.state === 'rejected')) {
+        <button class="btn-primary" type="button" [disabled]="busy" (click)="act('submit')">Submit for review</button>
+      }
+      @if (reviewer) {
+        @if (isCurrent && review.state === 'in_review') {
+          <button class="btn-primary" type="button" [disabled]="busy" (click)="act('approve')">Approve this definition</button>
+          <button class="btn-outline" type="button" [disabled]="busy || !comment.trim()" (click)="act('reject')">Reject</button>
+        }
+        @if (review.state === 'approved') {
+          <button class="btn-outline" type="button" [disabled]="busy" (click)="act('revalidate')">Revalidate</button>
+          <button class="btn-outline" type="button" [disabled]="busy || !comment.trim()" (click)="act('revoke')">Revoke approval</button>
+        }
+        @if (isCurrent && review.state === 'revoked') {
+          <button class="btn-outline" type="button" [disabled]="busy || !comment.trim()" (click)="act('reopen')">Reopen for review</button>
+        }
+      }
+    </div>
+  }
+  <details open>
+    <summary>Definition and dependency changes</summary>
+    <label>Compare against
+      <select class="input-dark" [ngModel]="compareDigest" (ngModelChange)="compare($event)">
+        <option value="">Select a submitted definition</option>
+        @for (item of definitions; track item.definitionDigest) {
+          <option [value]="item.definitionDigest">{{ item.createdAt | date:'short' }} · {{ item.state }} · {{ item.definitionDigest.slice(7, 19) }}</option>
+        }
+      </select>
+    </label>
+    @if (comparison) {
+      <table><thead><tr><th>Field / dependency</th><th>Compared definition</th><th>Viewed definition</th></tr></thead><tbody>
+        @for (change of changes(comparison.body, review.body); track change.path) {
+          <tr><td><code>{{ change.path }}</code></td><td><code>{{ change.before }}</code></td><td><code>{{ change.after }}</code></td></tr>
+        } @empty { <tr><td colspan="3">No controlled changes.</td></tr> }
+      </tbody></table>
+    }
+    <details><summary>Exact definition</summary><pre>{{ review.body | json }}</pre></details>
+    <details><summary>Source history references</summary><pre>{{ review.provenance | json }}</pre></details>
+  </details>
+  <details>
+    <summary>Retained source files and affected approvals</summary>
+    <p class="muted">Files are retained after submission. Downloads refer to the definition shown above.</p>
+    @for (blob of blobs(review.body); track blob.path) {
+      <div class="actions">
+        <code>{{ blob.path }}</code>
+        <button type="button" class="btn-outline" (click)="download(blob.hash)" [disabled]="review.state === 'unreviewed'">Download source</button>
+        <button type="button" class="btn-outline" (click)="findAffected(blob.hash)">Find approved definitions using this file</button>
+      </div>
+    }
+    @for (item of affected; track item.definitionDigest) {
+      <label class="actions"><input type="checkbox" [(ngModel)]="item.selected" [disabled]="busy || !reviewer || item.state === 'revoked'" />
+        {{ item.name }} · {{ item.state }} · <code>{{ item.definitionDigest }}</code></label>
+    }
+    @if (reviewer && affected.length) {
+      <button type="button" class="btn-outline" [disabled]="busy || !comment.trim()" (click)="revokeSelected()">Revoke selected approvals with the reason above</button>
+    }
+  </details>
+  <details open>
+    <summary>Review history</summary>
+    @for (event of events; track event.id) {
+      <p><strong>{{ event.action }}</strong> · {{ event.actor.username }} · {{ event.createdAt | date:'medium' }}<br />
+        {{ event.result.fromState }} → {{ event.result.state }} @if (event.comment) { · {{ event.comment }} }
+      </p>
+      @for (finding of event.result.findings; track $index) { <p class="muted">{{ finding.severity }}: {{ finding.message }}</p> }
+    } @empty { <p class="muted">No recorded review decisions.</p> }
+    @if (nextBefore) { <button type="button" class="btn-outline" (click)="moreHistory()">Earlier decisions</button> }
+  </details>
+}

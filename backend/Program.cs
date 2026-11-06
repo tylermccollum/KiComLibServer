@@ -1,3 +1,4 @@
+using KiComLibBackend.Services.Reviews;
 using System.Net;
 using System.Net.Http.Headers;
 using KiComLibBackend.Controllers;
@@ -45,6 +46,7 @@ builder.WebHost.ConfigureKestrel(options =>
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add(new CatalogConstraintExceptionFilter());
+    options.Filters.Add(new ReservedReviewFields());
 });
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -62,6 +64,11 @@ builder.Services.AddSingleton<DatabaseInitializer>();
 builder.Services.AddScoped<IBlobStore, DbBlobStore>();
 builder.Services.AddScoped<CommitService>();
 builder.Services.AddScoped<KiCadFieldBuilder>();
+builder.Services.AddScoped<ReviewDatabase>();
+builder.Services.AddScoped<ReviewDefinitionBuilder>();
+builder.Services.AddScoped<IReviewValidator, ReviewValidator>();
+builder.Services.AddScoped<ReviewService>();
+builder.Services.AddScoped<AssetVerificationService>();
 builder.Services.AddScoped<CatalogMatcher>();
 builder.Services.AddScoped<BomService>();
 builder.Services.AddScoped<ProjectAnalysisApplier>();
@@ -232,8 +239,14 @@ if (!string.Equals(Environment.GetEnvironmentVariable("DB_AUTO_INIT"), "false", 
     }
     catch (Exception exception)
     {
-        app.Logger.LogError(exception, "The database initialization failed. The API will not work until the database is available.");
+        app.Logger.LogCritical(exception, "Database migration failed; refusing to start.");
+        throw;
     }
+}
+
+else
+{
+    await app.Services.GetRequiredService<DatabaseInitializer>().ValidateAsync();
 }
 
 if (app.Environment.IsDevelopment())

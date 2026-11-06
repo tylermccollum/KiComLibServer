@@ -5,6 +5,7 @@ export interface PartFilter {
   libraryId: number | 'all';
   manufacturerId: number | 'all';
   status: PartStatusFilter;
+  reviewState?: string;
 }
 
 export const EMPTY_PART_FILTER: PartFilter = {
@@ -12,4 +13,5 @@ export const EMPTY_PART_FILTER: PartFilter = {
   libraryId: 'all',
   manufacturerId: 'all',
   status: 'all',
+  reviewState: 'all',
 };

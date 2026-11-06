@@ -119,6 +119,17 @@ docker compose -f compose_local.yml up -d
 
 Full request examples: [`backend/KiComLibBackend.http`](backend/KiComLibBackend.http).
 
+## Part review workflow
+
+The [review API documentation](docs/review-api.md) describes the implemented
+part revision fields, retained definitions, review decisions, and exact-digest
+lookup API. Review is advisory during editing; KiBot comparison and release
+enforcement remain a separate integration.
+
+[Symbol and footprint verification](docs/asset-verification-api.md) adds exact
+asset checks and visible status badges, independent of component approval.
+[AGENTS.md](AGENTS.md) defines the initial agent inspection and review workflow.
+
 ## Git projects
 
 KiComLib mirrors KiCad projects from Git read-only and compares them with the catalog. GitLab.com, a self-hosted GitLab, and GitHub.com are supported. Any other Git server is polled only. Admins add hosts, credentials, and repositories under **Git Integration**. Projects are chosen from discovered `.kicad_pro` files; nothing is created automatically.
@@ -194,3 +205,5 @@ The `./keys` volume is the live Data Protection key ring. **Backups** in the adm
 ## Version
 
 See `version.txt`.
+
+Review workflow: [API and definition contract](docs/review-api.md) · [upgrade and rollback](deployment/REVIEW-UPGRADE.md).

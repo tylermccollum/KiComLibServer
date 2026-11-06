@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Storage;
+using KiComLibBackend.Services.Reviews;
 using KiComLibBackend.Data;
 using KiComLibBackend.Models;
 using Microsoft.EntityFrameworkCore;
@@ -11,13 +13,23 @@ namespace KiComLibBackend.Services
     public class KiCadFieldBuilder
     {
         private readonly ApplicationDbContext _context;
+        private readonly ReviewService _reviews;
+        private readonly ReviewDatabase _reviewDb;
 
-        public KiCadFieldBuilder(ApplicationDbContext context)
+        public KiCadFieldBuilder(ApplicationDbContext context, ReviewService reviews, ReviewDatabase reviewDb)
         {
             _context = context;
+            _reviews = reviews;
+            _reviewDb = reviewDb;
         }
 
         public async Task<KiCadHttpPart> BuildAsync(Part part, CancellationToken cancellationToken = default)
+        {
+            return await BuildForPartIdAsync(part.Id!.Value, cancellationToken)
+                ?? throw new ReviewException(404, "Part no longer exists");
+        }
+
+        private async Task<KiCadHttpPart> BuildCoreAsync(Part part, CancellationToken cancellationToken)
         {
             var result = new KiCadHttpPart();
 
@@ -27,7 +39,7 @@ namespace KiComLibBackend.Services
             result.symbolIdStr = "";
             if (part.Symbol != null)
             {
-                LibraryFile? symLibFile = await _context.LibraryFile.FindAsync(part.Symbol.LibraryFileId);
+                LibraryFile? symLibFile = await _context.LibraryFile.AsNoTracking().FirstOrDefaultAsync(l => l.Id == part.Symbol.LibraryFileId, cancellationToken);
                 var symLib = symLibFile != null ? symLibFile.Filename : "";
                 var symName = part.Symbol != null ? part.Symbol.Name : "";
                 if (symLib != "" && symName != "")
@@ -45,7 +57,7 @@ namespace KiComLibBackend.Services
             var footprintStr = "";
             if (part.Footprint != null)
             {
-                LibraryFile? footLibFile = await _context.LibraryFile.FindAsync(part.Footprint.LibraryFileId);
+                LibraryFile? footLibFile = await _context.LibraryFile.AsNoTracking().FirstOrDefaultAsync(l => l.Id == part.Footprint.LibraryFileId, cancellationToken);
                 var footLib = footLibFile != null ? footLibFile.Filename : "";
                 var footName = part.Footprint != null ? part.Footprint.Name : "";
                 if (footLib != "" && footName != "")
@@ -64,7 +76,7 @@ namespace KiComLibBackend.Services
             var mpnStr = "";
             var distributorStr = "";
             var dpnStr = "";
-            List<PartNumber> partNumbers = await _context.PartNumber
+            List<PartNumber> partNumbers = await _context.PartNumber.AsNoTracking()
                 .Where(p => p.PartId == part.Id)
                 .OrderBy(p => p.Id)
                 .Take(2)
@@ -73,14 +85,14 @@ namespace KiComLibBackend.Services
             if (partNumber != null)
             {
                 mpnStr = partNumber.ManufacturerPartNumber;
-                Manufacturer? manufacturer = await _context.Manufacturer.FindAsync(partNumber.ManufacturerId);
+                Manufacturer? manufacturer = await _context.Manufacturer.AsNoTracking().FirstOrDefaultAsync(m => m.Id == partNumber.ManufacturerId);
                 manufacturerStr = manufacturer != null ? manufacturer.Name : "";
 
-                OrderNumber? orderNumber = await _context.OrderNumber.OrderBy(p => p.Id).FirstOrDefaultAsync(p => p.PartNumberId == partNumber.Id);
+                OrderNumber? orderNumber = await _context.OrderNumber.AsNoTracking().OrderBy(p => p.Id).FirstOrDefaultAsync(p => p.PartNumberId == partNumber.Id);
                 if (orderNumber != null)
                 {
                     dpnStr = orderNumber.OrderNumberValue;
-                    Distributor? distributor = await _context.Distributor.FindAsync(orderNumber.DistributorId);
+                    Distributor? distributor = await _context.Distributor.AsNoTracking().FirstOrDefaultAsync(d => d.Id == orderNumber.DistributorId);
                     distributorStr = distributor != null ? distributor.Name : "";
                 }
             }
@@ -107,23 +119,26 @@ namespace KiComLibBackend.Services
                 ["KiComLibUUID"] = new FieldDetail { Value = part.Uuid?.ToString(), Visible = "False" },
             };
 
+            var review = await _reviews.Current(part.Uuid!.Value, cancellationToken);
+            result.Fields["KiComLibRevision"] = new FieldDetail { Value = review["definitionDigest"]!.GetValue<string>(), Visible = "False" };
+            result.Fields["KiComLibReviewState"] = new FieldDetail { Value = review["state"]!.GetValue<string>(), Visible = "False" };
             return result;
         }
 
         public async Task<KiCadHttpPart?> BuildForPartIdAsync(int partId, CancellationToken cancellationToken = default)
         {
-            Part? part = await _context.Part
-                .Include(p => p.DatasheetNavigation)
-                .Include(p => p.Library)
-                .Include(p => p.Symbol)!.ThenInclude(s => s!.HeadRevision)
-                .Include(p => p.Footprint)!.ThenInclude(f => f!.HeadRevision)
-                .FirstOrDefaultAsync(p => p.Id == partId, cancellationToken);
-            if (part == null)
+            return await _reviewDb.Snapshot<KiCadHttpPart?>(async () =>
             {
-                return null;
-            }
-
-            return await BuildAsync(part, cancellationToken);
+                // Existing write transactions use the shared catalog lock. Fresh reads
+                // use REPEATABLE READ. Never reuse previously tracked catalog entities.
+                if (_context.Database.CurrentTransaction!.GetDbTransaction().IsolationLevel == System.Data.IsolationLevel.ReadCommitted)
+                    await _reviewDb.Execute("SELECT pg_advisory_xact_lock(1936418162, 1)", cancellationToken);
+                Part? part = await _context.Part.AsNoTracking()
+                    .Include(p => p.Symbol)!.ThenInclude(s => s!.HeadRevision)
+                    .Include(p => p.Footprint)!.ThenInclude(f => f!.HeadRevision)
+                    .FirstOrDefaultAsync(p => p.Id == partId, cancellationToken);
+                return part == null ? null : await BuildCoreAsync(part, cancellationToken);
+            }, cancellationToken);
         }
 
         public static string FieldValue(KiCadHttpPart part, string field)
@@ -180,7 +195,7 @@ namespace KiComLibBackend.Services
             int alternativeId = (part.Alternatives ?? []).FirstOrDefault(id => id > 0 && id != part.Id);
             if (alternativeId > 0)
             {
-                PartNumber? alternativeNumber = await _context.PartNumber
+                PartNumber? alternativeNumber = await _context.PartNumber.AsNoTracking()
                     .Where(p => p.PartId == alternativeId)
                     .OrderBy(p => p.Id)
                     .FirstOrDefaultAsync(cancellationToken);
@@ -202,7 +217,7 @@ namespace KiComLibBackend.Services
                 return ("", "");
             }
 
-            Manufacturer? manufacturer = await _context.Manufacturer.FindAsync(partNumber.ManufacturerId);
+            Manufacturer? manufacturer = await _context.Manufacturer.AsNoTracking().FirstOrDefaultAsync(m => m.Id == partNumber.ManufacturerId);
             return (manufacturer?.Name ?? "", partNumber.ManufacturerPartNumber ?? "");
         }
     }

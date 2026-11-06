@@ -466,7 +466,7 @@ namespace KiComLibBackend.Services
                 return;
             }
 
-            bool existsProbe = method == HttpMethods.Post && path == "/api/blob/exists";
+            bool existsProbe = method == HttpMethods.Post && (path == "/api/blob/exists" || path == "/api/reviews/resolve");
             bool catalogRead = catalogApi
                 && (existsProbe || method == HttpMethods.Get || method == HttpMethods.Head);
             if (catalogRead)

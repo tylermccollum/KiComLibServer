@@ -1,4 +1,5 @@
 using System.Text;
+using KiComLibBackend.Services.Reviews;
 using KiComLibBackend.Data;
 using KiComLibBackend.Models;
 using KiComLibBackend.Services;
@@ -14,12 +15,14 @@ namespace KiComLibBackend.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IBlobStore _blobStore;
         private readonly DiffService _diffService;
+        private readonly AssetVerificationService _verification;
 
-        public FootprintController(ApplicationDbContext context, IBlobStore blobStore, DiffService diffService)
+        public FootprintController(ApplicationDbContext context, IBlobStore blobStore, DiffService diffService, AssetVerificationService verification)
         {
             _context = context;
             _blobStore = blobStore;
             _diffService = diffService;
+            _verification = verification;
         }
 
         [HttpGet]
@@ -66,9 +69,12 @@ namespace KiComLibBackend.Controllers
                 _ => query
             };
 
-            List<FootprintDTO> list = await query.ToListAsync();
-            await AttachModelsToListAsync(list);
-            return list;
+            return await _verification.WithStates("footprint", async () =>
+            {
+                List<FootprintDTO> list = await query.ToListAsync();
+                await AttachModelsToListAsync(list);
+                return list;
+            }, item => item.Uuid, (item, state) => { item.Verified = state == "verified"; item.VerificationState = state; }, HttpContext.RequestAborted);
         }
 
         private async Task AttachModelsToListAsync(List<FootprintDTO> list)
@@ -127,75 +133,82 @@ namespace KiComLibBackend.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<FootprintDetailDto>> GetFootprint(int id, CancellationToken cancellationToken)
         {
-            FootprintHeadView? head = await _context.FootprintHeadViews.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
-            if (head == null)
+            return await _verification.Snapshot<ActionResult<FootprintDetailDto>>(async () =>
             {
-                return NotFound();
-            }
-
-            string? data = null;
-            if (!string.IsNullOrWhiteSpace(head.Hash))
-            {
-                Blob? blob = await _blobStore.GetAsync(head.Hash, cancellationToken);
-                if (blob?.Data != null)
+                FootprintHeadView? head = await _context.FootprintHeadViews.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
+                if (head == null)
                 {
-                    data = Encoding.UTF8.GetString(blob.Data);
+                    return NotFound();
                 }
-            }
 
-            List<FootprintModelDto> models = new();
-            if (head.HeadRevisionId.HasValue)
-            {
-                var links = await (
-                    from m in _context.FootprintRevisionModel3Ds
-                    join md in _context.Model3D on m.Model3dId equals md.Id
-                    where m.FootprintRevisionId == head.HeadRevisionId
-                    orderby m.Position
-                    select new { m, md }).ToListAsync(cancellationToken);
-
-                foreach (var link in links)
+                string? data = null;
+                if (!string.IsNullOrWhiteSpace(head.Hash))
                 {
-                    models.Add(new FootprintModelDto
+                    Blob? blob = await _blobStore.GetAsync(head.Hash, cancellationToken);
+                    if (blob?.Data != null)
                     {
-                        Position = link.m.Position,
-                        Model3dId = link.m.Model3dId,
-                        Model3dUuid = link.md.Uuid,
-                        Directory = link.md.Directory,
-                        Filename = link.md.Filename,
-                        Offset = new[] { link.m.OffsetX, link.m.OffsetY, link.m.OffsetZ },
-                        Scale = new[] { link.m.ScaleX, link.m.ScaleY, link.m.ScaleZ },
-                        Rotate = new[] { link.m.RotateX, link.m.RotateY, link.m.RotateZ },
-                        Opacity = link.m.Opacity,
-                        Hide = link.m.Hide
-                    });
+                        data = Encoding.UTF8.GetString(blob.Data);
+                    }
                 }
-            }
 
-            return new FootprintDetailDto
-            {
-                Id = head.Id,
-                Uuid = head.Uuid,
-                LibraryFileId = head.LibraryFileId,
-                Name = head.Name,
-                Type = head.Type,
-                BoardOnly = head.BoardOnly,
-                ExcludeFromPosFiles = head.ExcludeFromPosFiles,
-                ExcludeFromBom = head.ExcludeFromBom,
-                Height = head.Height,
-                Layer = head.Layer,
-                Description = head.Description,
-                Tags = head.Tags,
-                Property = head.Property,
-                Data = data,
-                Hash = head.Hash?.Trim(),
-                FileHash = (head.FileHash ?? head.Hash)?.Trim(),
-                RevisionNo = head.RevisionNo,
-                HeadRevisionId = head.HeadRevisionId,
-                Model3dId = models.FirstOrDefault(m => m.Position == 0)?.Model3dId ?? head.Model3dId,
-                Models = models,
-                UpdatedAt = head.UpdatedAt,
-                CreatedAt = head.CreatedAt
-            };
+                List<FootprintModelDto> models = new();
+                if (head.HeadRevisionId.HasValue)
+                {
+                    var links = await (
+                        from m in _context.FootprintRevisionModel3Ds
+                        join md in _context.Model3D on m.Model3dId equals md.Id
+                        where m.FootprintRevisionId == head.HeadRevisionId
+                        orderby m.Position
+                        select new { m, md }).ToListAsync(cancellationToken);
+
+                    foreach (var link in links)
+                    {
+                        models.Add(new FootprintModelDto
+                        {
+                            Position = link.m.Position,
+                            Model3dId = link.m.Model3dId,
+                            Model3dUuid = link.md.Uuid,
+                            Directory = link.md.Directory,
+                            Filename = link.md.Filename,
+                            Offset = new[] { link.m.OffsetX, link.m.OffsetY, link.m.OffsetZ },
+                            Scale = new[] { link.m.ScaleX, link.m.ScaleY, link.m.ScaleZ },
+                            Rotate = new[] { link.m.RotateX, link.m.RotateY, link.m.RotateZ },
+                            Opacity = link.m.Opacity,
+                            Hide = link.m.Hide
+                        });
+                    }
+                }
+
+                string verificationState = head.Uuid is Guid uuid
+                    ? (await _verification.Current("footprint", uuid, cancellationToken))["state"]!.GetValue<string>() : "blocked";
+                return new FootprintDetailDto
+                {
+                    Id = head.Id,
+                    Verified = verificationState == "verified",
+                    VerificationState = verificationState,
+                    Uuid = head.Uuid,
+                    LibraryFileId = head.LibraryFileId,
+                    Name = head.Name,
+                    Type = head.Type,
+                    BoardOnly = head.BoardOnly,
+                    ExcludeFromPosFiles = head.ExcludeFromPosFiles,
+                    ExcludeFromBom = head.ExcludeFromBom,
+                    Height = head.Height,
+                    Layer = head.Layer,
+                    Description = head.Description,
+                    Tags = head.Tags,
+                    Property = head.Property,
+                    Data = data,
+                    Hash = head.Hash?.Trim(),
+                    FileHash = (head.FileHash ?? head.Hash)?.Trim(),
+                    RevisionNo = head.RevisionNo,
+                    HeadRevisionId = head.HeadRevisionId,
+                    Model3dId = models.FirstOrDefault(m => m.Position == 0)?.Model3dId ?? head.Model3dId,
+                    Models = models,
+                    UpdatedAt = head.UpdatedAt,
+                    CreatedAt = head.CreatedAt
+                };
+            }, cancellationToken);
         }
 
         [HttpGet("preview/{id:int}")]

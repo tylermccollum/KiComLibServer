@@ -23,7 +23,7 @@ import {
     standalone: false
 })
 export class SymbolTableComponent implements AfterViewInit {
-  displayedColumns: string[] = ['id', 'name', 'description', 'libraryFileId', 'revisionNo', 'inBom', 'actions'];
+  displayedColumns: string[] = ['id', 'name', 'verification', 'description', 'libraryFileId', 'revisionNo', 'inBom', 'actions'];
   dataSource = new SymbolDataSource(this.symbolService);
   sort: Sort = { active: 'id', direction: 'asc' };
   filter: SymbolFilter = { ...EMPTY_SYMBOL_FILTER };

@@ -1,3 +1,4 @@
+import { PartReviewComponent } from './components/part-review/part-review.component';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatPaginatorModule } from '@angular/material/paginator';
@@ -46,6 +47,7 @@ import { HistoryModule } from '../history/history.module';
   ],
   imports: [
     CommonModule,
+    PartReviewComponent,
     FormsModule,
     MatFormFieldModule,
     MatInputModule,

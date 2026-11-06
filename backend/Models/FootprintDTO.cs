@@ -3,6 +3,8 @@ namespace KiComLibBackend.Models
     public class FootprintDTO
     {
         public int? Id { get; set; }
+        public bool Verified { get; set; }
+        public string VerificationState { get; set; } = "unverified";
         public Guid? Uuid { get; set; }
         public required int LibraryFileId { get; set; }
         public required string Name { get; set; }
