@@ -14,7 +14,12 @@ import {
   styles: [`:host { display:block; padding:1rem 0; } code { overflow-wrap:anywhere; }
     table { width:100%; font-size:.8rem; } td, th { text-align:left; padding:.5rem; border-bottom:1px solid #374151; vertical-align:top; }
     .actions { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0; } details { margin:1rem 0; } summary { cursor:pointer; }
-    .error { color:#fca5a5; } .muted { color:#9ca3af; } .digest { font-size:.75rem; }`]
+    .review-status-line { display:flex; align-items:center; flex-wrap:wrap; gap:.625rem; }
+    .review-status-badge { display:inline-flex; align-items:center; border-radius:.375rem; padding:.375rem .75rem;
+      background:#dc2626; color:#fff; font-size:.875rem; font-weight:600; line-height:1.25rem; }
+    .review-status-badge.is-approved { background:#15803d; }
+    .review-status-badge.is-pending { background:#facc15; color:#422006; }
+    .error { color:#fca5a5; } .muted { color:#9ca3af; }`]
 })
 export class PartReviewComponent implements OnChanges {
   @Input({ required: true }) partUuid = '';

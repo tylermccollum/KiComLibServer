@@ -19,6 +19,10 @@ A catalog writer submits; an administrator with effective catalog write access
 approves, rejects, revokes, reopens, or revalidates. Read-only admin tokens cannot
 make decisions. Self-review is allowed. Reject, revoke, and reopen require a reason.
 
+The review status uses a filled rounded badge: yellow for unreviewed/in-review
+or approval requiring validation, green for a valid approval, and red for
+rejected, revoked, or other unavailable states.
+
 Controlled changes create an unreviewed digest on demand. Restoring identical
 content restores its existing state, including revocation. Approving/rejecting a
 stale current definition returns 409. Historical approvals remain available until

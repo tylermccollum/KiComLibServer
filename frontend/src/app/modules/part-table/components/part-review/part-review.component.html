@@ -14,11 +14,15 @@
 @if (error) { <p class="error" role="alert">{{ error }}</p> }
 @if (busy) { <p class="muted" role="status">Working…</p> }
 @if (shown; as review) {
-  <p><strong>{{ isCurrent ? 'Current' : 'Historical' }} definition · {{ review.state.replace('_', ' ') }}</strong>
-    @if (review.state === 'approved' && !review.approvalValid) { <span class="error"> · Validation required</span> }
+  <p class="review-status-line">
+    <strong>{{ isCurrent ? 'Current' : 'Historical' }} definition</strong>
+    <span class="review-status-badge" role="status"
+      [class.is-approved]="review.state === 'approved' && review.approvalValid"
+      [class.is-pending]="review.state === 'unreviewed' || review.state === 'in_review' || (review.state === 'approved' && !review.approvalValid)">
+      {{ review.state.replace('_', ' ') | titlecase }}
+    </span>
+    @if (review.state === 'approved' && !review.approvalValid) { <span class="error">Validation required</span> }
   </p>
-  <p class="digest"><code>{{ review.definitionDigest || 'Cannot capture this definition until its dependency errors are resolved.' }}</code></p>
-  <p class="muted">Review records cover the saved part and its dependencies. Release checking also needs to compare the design in KiBot.</p>
   @for (finding of findings; track $index) {
     <p [class.error]="finding.severity === 'error'">{{ finding.severity }} · {{ finding.entityPath }}: {{ finding.message }}</p>
   }
