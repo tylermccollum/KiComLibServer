@@ -13,7 +13,7 @@ Ordinary part and commit/import writes containing these property keys are reject
 Existing placed components are not retroactively stamped. Refresh from the HTTP
 library using the usual KiCad workflow when the release checker is introduced.
 
-Open a part's **Review** tab to inspect the captured body, compare against a
+Open a part's **Review** tab to inspect its review status, compare against a
 previous submission, download retained sources, and see decisions and findings.
 A catalog writer submits; an administrator with effective catalog write access
 approves, rejects, revokes, reopens, or revalidates. Read-only admin tokens cannot
@@ -157,7 +157,7 @@ Capture is on demand, with no per-edit snapshot jobs or per-part approval cache.
 The current-state list is intended for the initial catalog scale; large catalogs
 may need a measured cache/invalidation strategy later. Retained evidence has no
 purge endpoint. Geometry preview rendering in the Overview tab remains the current
-catalog view; the Review tab uses exact JSON/diffs and retained source downloads.
+catalog view; the Review tab uses definition diffs and retained source downloads.
 
 Machine-readable contracts: [definition v1](review-definition-v1.schema.json),
 [resolver v1](review-resolve-v1.schema.json), and an independent

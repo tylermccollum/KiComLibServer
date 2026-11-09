@@ -12,7 +12,6 @@ import {
   selector: 'part-review', standalone: true, imports: [CommonModule, FormsModule],
   templateUrl: './part-review.component.html', changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`:host { display:block; padding:1rem 0; } code { overflow-wrap:anywhere; }
-    pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:28rem; overflow:auto; font-size:.75rem; }
     table { width:100%; font-size:.8rem; } td, th { text-align:left; padding:.5rem; border-bottom:1px solid #374151; vertical-align:top; }
     .actions { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0; } details { margin:1rem 0; } summary { cursor:pointer; }
     .error { color:#fca5a5; } .muted { color:#9ca3af; } .digest { font-size:.75rem; }`]
