@@ -71,6 +71,16 @@ association transforms. Raw revision/commit numbers remain provenance rather
 than the content identity. Asset and part definition digests are separate
 contracts and must not be interchanged.
 
+A 3D model is optional. When supplied, embedded STEP is preferred: native
+`kicad-embed://` references resolve inside the footprint and need no separate
+model record. Embedded bytes and transforms are covered by the footprint blob
+hash, so changing either makes verification stale. Only separately registered
+models appear in the body's `models` array. External references must still
+resolve to registered models; an unresolved reference is different from having
+no model. Fast embedded checks validate reference/container structure and payload
+encoding, not native STEP decoding or its internal checksum. Review embedded
+models in KiCad as described in [AGENTS.md](../AGENTS.md).
+
 States are derived from the current capture and most recent decision:
 
 - `unverified`: no decision has been recorded for this asset.

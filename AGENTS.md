@@ -37,10 +37,22 @@ MPNs, or authorize a board release. Part approval remains the separate
    A generic symbol can be checked against its intended generic function; do
    not claim a device-specific pinout was checked when no device was selected.
 4. **Check the footprint.** Inspect pad numbers, positions, dimensions, pitch,
-   drills, orientation/pin-one indication, outlines, and any model associations
-   and transforms. Compare with the applicable package drawing or other
-   identified dimensional source. Keep units and package variants explicit.
-   A valid generic package does not establish that every component using it fits.
+   drills, orientation/pin-one indication, and outlines. Compare with the
+   applicable package drawing or other identified dimensional source. Keep units
+   and package variants explicit. A valid generic package does not establish
+   that every component using it fits.
+   3D models are optional: no model is a valid state without a missing-model
+   warning. Prefer STEP models embedded in the footprint when a model is supplied.
+   A `kicad-embed://` reference resolves inside `embedded_files` and needs no
+   separate server model record. Every external model reference, including KiCad
+   stock-library paths, must have a matching registered model. Check model
+   placement when present; use KiCad to load/decode embedded data and check its
+   internal checksum. The server's fast capture checks do not perform that native
+   model validation. Do not invent a model or require one to verify a footprint.
+   When converting a footprint to embedded-only models, explicitly send
+   `models: []` with its normal commit update; omitting the field carries old
+   registered model associations forward. For mixed models, send only the
+   remaining external associations at their original source positions.
 5. **Record a small decision.** Call the item's `/actions` endpoint with `verify`
    only when the applicable checks were completed. Include the inspected digest,
    expected state version, a new request UUID, a short note describing the scope,

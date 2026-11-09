@@ -10,7 +10,7 @@ using Npgsql;
 namespace KiComLibBackend.Tests;
 
 [Collection("kicomlib-db")]
-public class AssetVerificationTests(CustomWebApplicationFactory factory)
+public partial class AssetVerificationTests(CustomWebApplicationFactory factory)
 {
     private sealed record Asset(string Kind, int Id, Guid Uuid, int Library, int Revision, string Hash);
     private async Task<HttpClient> Admin()

@@ -103,11 +103,22 @@ The body has `schemaVersion`, `part`, `primarySource`, `alternativeSource`,
 - `symbol`: UUID/name, library UUID/filename, exact blob hash, metadata, and recursive
   `parent`. Same-library and explicit `library:name` inheritance resolve transitively.
   Missing parents and cycles fail capture. Depth limit: 128; text limit: 16 MiB.
-- `footprint`: UUID/name, library UUID/filename, exact blob hash, metadata, ordered
-  model associations including position, transforms, hide and opacity. Model paths,
-  count/order, and transforms must agree with the source. Models contain UUID,
-  directory, filename, blob hash. Stored float transforms compare at relative 1e-5
-  to account for the existing PostgreSQL `real` representation.
+- `footprint`: UUID/name, library UUID/filename, exact blob hash, metadata, and
+  ordered separately registered model associations including source position,
+  transforms, hide, and opacity. 3D models are optional; an empty model list and
+  a footprint with no model declarations are valid without a missing-model finding.
+  Native `kicad-embed://` model references resolve to `embedded_files` in the same
+  footprint and require no separate server model record. Their bytes and placement
+  are retained in the footprint blob and covered by its SHA-256 identity; the
+  definition body/schema remains unchanged. External references, including stock
+  KiCad paths, still require registered models at their original source positions.
+  Registered models contain UUID, directory, filename, and blob hash; paths and
+  transforms must agree with the source. Stored float transforms compare at
+  relative 1e-5 to account for the PostgreSQL `real` representation.
+  Embedded capture checks unique references, file type, nonempty base64 with a
+  Zstandard frame header, checksum format, and finite transforms. It does not
+  decompress STEP data or verify KiCad's internal checksum; native KiCad loading
+  and engineering inspection remain part of the review workflow.
 - `datasheets`: linked evidence order, UUID/directory/filename/blob hash. `datasheetUrl`
   is the external URL field; it does not freeze a remote resource. General-purpose
   part resource links are not datasheet evidence in v1.

@@ -164,14 +164,24 @@ public sealed class ReviewDefinitionBuilder(ReviewDatabase db)
                         JsonArray models = [];
                         var associations = await db.Rows("SELECT to_jsonb(m)::text FROM public.footprint_revision_model3d m WHERE footprint_revision_id=@id ORDER BY position", ct, ("id", Id(row, "head_revision_id")));
                         var declared = expression.Named("model").ToList();
-                        if (declared.Count != associations.Count) Error(path + ".models", "Source model count does not match stored associations");
+                        var embedded = new HashSet<int>();
+                        for (int position = 0; position < declared.Count; position++)
+                        {
+                            if (!KiCadEmbeddedModel.IsReference(declared[position])) continue;
+                            KiCadEmbeddedModel.Validate(expression, declared[position]);
+                            embedded.Add(position);
+                        }
+                        var expected = Enumerable.Range(0, declared.Count).Where(position => !embedded.Contains(position)).ToHashSet();
+                        var registered = associations.Select(a => Id(a, "position")).ToHashSet();
+                        if (!expected.SetEquals(registered))
+                            Error(path + ".models", "Referenced models must be embedded in the footprint or registered at their source positions; a footprint may omit 3D models");
                         foreach (var association in associations)
                         {
                             var model = await Asset("model3d", Id(association, "model3d_id"), path + ".models", []);
                             var item = Pick(association, "position", "offset_x", "offset_y", "offset_z", "scale_x", "scale_y", "scale_z", "rotate_x", "rotate_y", "rotate_z", "hide", "opacity");
                             item["model"] = model; models.Add(item);
                             int position = Id(association, "position");
-                            if (model != null && position >= 0 && position < declared.Count) CheckModel(declared[position], model, association, path + ".models[" + position + "]");
+                            if (model != null && expected.Contains(position)) CheckModel(declared[position], model, association, path + ".models[" + position + "]");
                             else Error(path + ".models", "Model positions must match source order");
                         }
                         result["models"] = models;
