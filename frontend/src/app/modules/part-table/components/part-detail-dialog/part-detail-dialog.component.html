@@ -13,11 +13,6 @@
 
 <mat-dialog-content>
   <mat-tab-group>
-    <mat-tab label="Review">
-      <ng-template matTabContent>
-        @if (part?.uuid) { <part-review [partUuid]="part!.uuid!" (changed)="catalogChanged = true"></part-review> }
-      </ng-template>
-    </mat-tab>
     <!-- Overview -->
     <mat-tab label="Overview">
       <div class="grid grid-cols-1 gap-4 pt-4 lg:grid-cols-2">
@@ -155,6 +150,12 @@
           </section>
         </div>
       </div>
+    </mat-tab>
+
+    <mat-tab label="Review">
+      <ng-template matTabContent>
+        @if (part?.uuid) { <part-review [partUuid]="part!.uuid!" (changed)="catalogChanged = true"></part-review> }
+      </ng-template>
     </mat-tab>
 
     <!-- Part & order numbers -->
